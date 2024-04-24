@@ -8,15 +8,15 @@ namespace SuperSocketPractice
 {
     public abstract class PacketHandler
     {
-        Listener _listener;
+       
 
 
-        public PacketHandler(Listener listener) 
+        public PacketHandler() 
         {
-            _listener = listener;
+            
         }
 
-        public abstract void RegisterPacketHandler(Dictionary<int, Action<ServerPacketData>> packetHandlerMap);
+        public abstract void RegisterPacketHandler(Dictionary<int, Action<MemoryPackBinaryRequestInfo>> packetHandlerMap);
 
     }
 }

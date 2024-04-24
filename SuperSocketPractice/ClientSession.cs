@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SuperSocketPractice
 {
-    public class ClientSession : AppSession<ClientSession, EFBinaryRequestInfo>
+    public class ClientSession : AppSession<ClientSession, MemoryPackBinaryRequestInfo>
     {
     }
 }

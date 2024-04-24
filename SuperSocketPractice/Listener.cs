@@ -5,31 +5,34 @@ using System.Text;
 using System.Threading.Tasks;
 
 using SuperSocket.SocketBase;
+using SuperSocket.SocketBase.Logging;
 using SuperSocket.SocketBase.Protocol;
 using SuperSocket.SocketEngine;
+using static System.Collections.Specialized.BitVector32;
+
 
 namespace SuperSocketPractice
 {
     // AppServer를 상속받는 Listener 생성
-    public class Listener : AppServer<ClientSession, EFBinaryRequestInfo>
+    public class Listener : AppServer<ClientSession, MemoryPackBinaryRequestInfo>
     {
         SuperSocket.SocketBase.Config.IServerConfig m_Config;
-        PacketProcessor MainPacketProcessor = new PacketProcessor();
+        PacketProcessor _mainPacketProcessor = new PacketProcessor();
 
 
         public Listener()
-            : base(new DefaultReceiveFilterFactory<ReceiveFilter, EFBinaryRequestInfo>())
+            : base(new DefaultReceiveFilterFactory<ReceiveFilter, MemoryPackBinaryRequestInfo>())
         {
             NewSessionConnected += new SessionHandler<ClientSession>(OnConnected);
             SessionClosed += new SessionHandler<ClientSession, CloseReason>(OnClosed);
-            NewRequestReceived += new RequestHandler<ClientSession, EFBinaryRequestInfo>(OnPacketReceived);
+            NewRequestReceived += new RequestHandler<ClientSession, MemoryPackBinaryRequestInfo>(OnPacketReceived);
         }
 
         public void Init()
         {
-            m_Config = new SuperSocket.SocketBase.Config.ServerConfig
+            m_Config = new SuperSocket.SocketBase.Config.ServerConfig()
             {
-                Name = "SuperSocketChat",
+                Name = "SuperSocketPractice",
                 Ip = "Any", // 모든 주소 연결 허용
                 Port = 8282, // 포트 할당
                 Mode = SocketMode.Tcp,
@@ -40,29 +43,46 @@ namespace SuperSocketPractice
             };
         }
 
-        public void createAndStart()
+        public void StopServer()
         {
-            bool result = Setup(new SuperSocket.SocketBase.Config.RootConfig(), m_Config);
+            Stop();
 
-            if(result == false)
+            _mainPacketProcessor.Destory();
+        }
+
+        public void CreateAndStart()
+        {
+            try
             {
-                Console.WriteLine("ChatServer 초기화 실패");
+                bool result = Setup(new SuperSocket.SocketBase.Config.RootConfig(), m_Config, logFactory: new ConsoleLogFactory());
+                
+                if (result == false)
+                {
+                    Console.WriteLine("ChatServer 초기화 실패");
+                    return;
+                }
+                else if(result == true)
+                {
+                    Console.WriteLine("ChatServer 초기화 성공");
+                }
+
+                CreateComponent();
+
+
+                Start(); // 서버 Listening 시작
             }
-            else
+            catch(Exception ex) 
             {
-                Console.WriteLine("ChatServer 초기화 성공");
+                Console.WriteLine($"[ERROR] 서버 생성 실패: {ex.ToString()}");
             }
-
-
-            CreateComponent();
-            Start(); // 서버 Listening 시작
 
         }
 
+        // 패킷 프로세서 생성 및 실행
         void CreateComponent()
         {
-            MainPacketProcessor = new PacketProcessor();
-            MainPacketProcessor.CreateAndStart(); // 프로세서 초기화
+            _mainPacketProcessor = new PacketProcessor();
+            _mainPacketProcessor.CreateAndStart(); // 프로세서 초기화
         }
 
 
@@ -98,25 +118,13 @@ namespace SuperSocketPractice
             Console.WriteLine($"[OnClosed] sesseionID: {session.SessionID}, ${closeReason.ToString()}");
         }
 
-        void OnPacketReceived(ClientSession clientSession, EFBinaryRequestInfo requestInfo)
+        void OnPacketReceived(ClientSession clientSession, MemoryPackBinaryRequestInfo requestInfo)
         {
-            Console.WriteLine($"[OnPacketReceived] sesseionId: {clientSession.SessionID}");
+            Console.WriteLine($"세션 번호 {clientSession.SessionID} 받은 데이터 크기: {requestInfo.Body.Length}, ThreadId: {Thread.CurrentThread.ManagedThreadId}");
 
-            var packet = new ServerPacketData();
-            // 받은 패킷에 대해 파싱 + 패킷 조립
-
-            packet.SessionID = clientSession.SessionID;
-            packet.PacketSize = requestInfo.Size;
-            packet.PacketID = requestInfo.PacketID;
-            packet.Type = requestInfo.Type;
-            packet.BodyData = requestInfo.Body;
-
-            // TODO 패킷 프로세서에게 전달
-
-
-
-
-
+            requestInfo.SessionID = clientSession.SessionID;
+            // 패킷 프로세서에게 전달
+            _mainPacketProcessor.Insert(requestInfo);
         }
 
     }

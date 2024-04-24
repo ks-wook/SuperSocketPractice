@@ -49,12 +49,7 @@ namespace SuperSocketPractice
 
 
 
-    // 로그인 요청
-    [MemoryPackable]
-    public partial class PKTTest
-    {
-        public string Msg { get; set; } = string.Empty;
-    }
+    
 
 
 
@@ -67,8 +62,8 @@ namespace SuperSocketPractice
         S_Disconnect = 1002,
 
 
-        // Test 2001 ~ 
-        S_Test = 2001,
+        // Test 101 ~ 
+        S_Test = 101,
 
     }
 }
